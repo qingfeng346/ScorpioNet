@@ -65,7 +65,7 @@ namespace Scorpio.Net {
                     else
                         m_SendEvent.SetBuffer(data, offset, length);
                     completedAsync = m_Socket.SendAsync(m_SendEvent);
-                } catch (Exception ex) {
+                } catch (System.Exception ex) {
                     LogError("发送数据出错 : " + ex.ToString());
                     Disconnect(SocketError.SocketError);
                 }
@@ -102,7 +102,7 @@ namespace Scorpio.Net {
                 m_RecvTokenSize += e.BytesTransferred;
                 try {
                     ParsePackage();
-                } catch (Exception ex) {
+                } catch (System.Exception ex) {
                     LogError("解析数据出错 : " + ex.ToString());
                     Disconnect(SocketError.SocketError);
                     return;

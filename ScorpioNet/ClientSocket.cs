@@ -41,7 +41,7 @@ namespace Scorpio.Net {
                 }
 #endif
                 m_Socket.ConnectAsync(m_ConnectEvent);
-            } catch (Exception ex) {
+            } catch (System.Exception ex) {
                 m_State = ClientState.None;
                 logger.error("连接服务器出错 " + host + ":" + port + " " + ex.ToString());
             };

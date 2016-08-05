@@ -26,7 +26,7 @@ namespace Scorpio.Net {
                 m_Socket.Listen(100);
                 m_State = ServerState.Listened;
                 BeginAccept();
-            } catch (Exception ex) {
+            } catch (System.Exception ex) {
                 m_State = ServerState.None;
                 logger.error("服务器监听失败 [" + port + "] " + ex.ToString());
             };
@@ -35,7 +35,7 @@ namespace Scorpio.Net {
             bool completed = false;
             try {
                 completed = m_Socket.AcceptAsync(m_AcceptEvent);
-            } catch (Exception ex) {
+            } catch (System.Exception ex) {
                 logger.error("Accept出现错误 : " + ex.ToString());
             }
             if (!completed) BeginAccept();
