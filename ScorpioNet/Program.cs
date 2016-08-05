@@ -15,9 +15,9 @@ namespace ScorpioNet {
         public override void OnInitialize() {
             Console.WriteLine("有新连接进入 " + m_Socket.GetSocket().RemoteEndPoint.ToString());
         }
-        public override void OnRecv(int length, byte[] data) {
-            Console.WriteLine("服务器收到消息 " + Encoding.UTF8.GetString(data));
-            m_Socket.Send(data);
+        public override void OnRecv(byte type, int length, byte[] data) {
+            Console.WriteLine("服务器收到消息 类型 " + type + "  数据 : " + Encoding.UTF8.GetString(data));
+            m_Socket.Send(type, data);
         }
         public override void Disconnect(SocketError error) {
 
@@ -38,8 +38,8 @@ namespace ScorpioNet {
         public override void OnInitialize() {
             Console.WriteLine("连接成功");
         }
-        public override void OnRecv(int length, byte[] data) {
-            Console.WriteLine("客户端收到消息 " + Encoding.UTF8.GetString(data));
+        public override void OnRecv(byte type, int length, byte[] data) {
+            Console.WriteLine("客户端收到消息 类型 " + type + "  数据 : " + Encoding.UTF8.GetString(data));
         }
         public override void Disconnect(SocketError error) {
 
@@ -53,7 +53,7 @@ namespace ScorpioNet {
             client.Connect("localhost", 9999);
             while (true) {
                 string str = Console.ReadLine();
-                ClientConnection.GetInstance().Send(Encoding.UTF8.GetBytes(str));
+                ClientConnection.GetInstance().Send(100, Encoding.UTF8.GetBytes(str));
             }
         }
     }

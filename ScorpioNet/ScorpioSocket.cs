@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net.Sockets;
 namespace Scorpio.Net {
+    using size_t = Int16;
     public class ScorpioSocket {
         private const int MAX_BUFFER_LENGTH = 8192;                             // 缓冲区大小
         private const int HEAD_LENGTH = 2;                                      // 协议头长度
@@ -37,12 +38,14 @@ namespace Scorpio.Net {
             return m_Socket;
         }
         //发送协议
-        public void Send(byte[] data) {
-            short length = Convert.ToInt16(data.Length);
-            byte[] buffer = new byte[length + HEAD_LENGTH];
-            byte[] head = BitConverter.GetBytes(length + HEAD_LENGTH);
+        public void Send(byte type, byte[] data) {
+            size_t length = (size_t)data.Length;
+            int count = length + HEAD_LENGTH + 1;
+            byte[] buffer = new byte[count];
+            byte[] head = BitConverter.GetBytes(count);
             Array.Copy(head, buffer, HEAD_LENGTH);
-            Array.Copy(data, 0, buffer, HEAD_LENGTH, length);
+            buffer[HEAD_LENGTH] = type;
+            Array.Copy(data, 0, buffer, HEAD_LENGTH + 1, length);
             lock (m_SendQueue) { m_SendQueue.Enqueue(buffer); }
             BeginSend();
         }
@@ -110,12 +113,13 @@ namespace Scorpio.Net {
         void ParsePackage() {
             for (;;) {
                 if (m_RecvTokenSize < HEAD_LENGTH) break;
-                short size = BitConverter.ToInt16(m_RecvTokenBuffer, 0);
+                size_t size = BitConverter.ToInt16(m_RecvTokenBuffer, 0);
                 if (m_RecvTokenSize < size) break;
-                int length = size - HEAD_LENGTH;
+                byte type = m_RecvTokenBuffer[HEAD_LENGTH];
+                int length = size - HEAD_LENGTH - 1;
                 byte[] buffer = new byte[length];
-                Array.Copy(m_RecvTokenBuffer, HEAD_LENGTH, buffer, 0, length);
-                OnRecv(length, buffer);
+                Array.Copy(m_RecvTokenBuffer, HEAD_LENGTH + 1, buffer, 0, length);
+                OnRecv(type, length, buffer);
                 m_RecvTokenSize -= size;
                 if (m_RecvTokenSize > 0) Array.Copy(m_RecvTokenBuffer, size, m_RecvTokenBuffer, 0, m_RecvTokenSize);
             }
@@ -125,8 +129,8 @@ namespace Scorpio.Net {
         }
         void OnSend() {
         }
-        void OnRecv(int length, byte[] data) {
-            m_Connection.OnRecv(length, data);
+        void OnRecv(byte type, int length, byte[] data) {
+            m_Connection.OnRecv(type, length, data);
         }
         void LogError(string error) {
             logger.error(error);
