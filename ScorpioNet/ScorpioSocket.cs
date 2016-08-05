@@ -24,6 +24,7 @@ namespace Scorpio.Net {
         public void SetSocket(Socket socket, ScorpioConnection connection) {
             m_Socket = socket;
             m_Connection = connection;
+            m_Connection.SetSocket(this);
             m_Sending = false;
             m_RecvTokenSize = 0;
             Array.Clear(m_RecvTokenBuffer, 0, m_RecvTokenBuffer.Length);
@@ -32,9 +33,17 @@ namespace Scorpio.Net {
             BeginReceive();
             m_Connection.OnInitialize();
         }
+        public Socket GetSocket() {
+            return m_Socket;
+        }
         //发送协议
         public void Send(byte[] data) {
-            lock (m_SendQueue) { m_SendQueue.Enqueue(data); }
+            short length = Convert.ToInt16(data.Length);
+            byte[] buffer = new byte[length + HEAD_LENGTH];
+            byte[] head = BitConverter.GetBytes(length + HEAD_LENGTH);
+            Array.Copy(head, buffer, HEAD_LENGTH);
+            Array.Copy(data, 0, buffer, HEAD_LENGTH, length);
+            lock (m_SendQueue) { m_SendQueue.Enqueue(buffer); }
             BeginSend();
         }
         void BeginSend() {
