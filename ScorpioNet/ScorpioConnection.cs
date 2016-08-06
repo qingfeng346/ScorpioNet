@@ -8,11 +8,11 @@ namespace Scorpio.Net {
         internal void SetSocket(ScorpioSocket socket) {
             m_Socket = socket;
         }
-        public void Send(byte type, byte[] data) {
-            m_Socket.Send(type, data);
+        public void Send(byte type, short msgId, byte[] data) {
+            m_Socket.Send(type, msgId, data);
         }
         public abstract void OnInitialize();
-        public abstract void OnRecv(byte type, int length, byte[] data);
+        public abstract void OnRecv(byte type, short msgId, int length, byte[] data);
         public abstract void Disconnect(SocketError error);
 
     }

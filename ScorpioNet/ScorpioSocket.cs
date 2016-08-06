@@ -2,18 +2,16 @@
 using System.Collections.Generic;
 using System.Net.Sockets;
 namespace Scorpio.Net {
-    using size_t = Int16;
     public class ScorpioSocket {
         private const int MAX_BUFFER_LENGTH = 8192;                             // 缓冲区大小
-        private const int HEAD_LENGTH = 2;                                      // 协议头长度
         private byte[] m_RecvTokenBuffer = new byte[MAX_BUFFER_LENGTH * 10];    // 已经接收的数据总缓冲
         private int m_RecvTokenSize = 0;                                        // 接收总数据的长度
         private bool m_Sending;                                                 // 是否正在发送消息
         private Socket m_Socket = null;                                         // Socket句柄
-        private Queue<byte[]> m_SendQueue = new Queue<byte[]>();                // 消息堆栈
+        private Queue<byte[]> m_SendQueue = new Queue<byte[]>();                // 发送消息队列
         private SocketAsyncEventArgs m_RecvEvent = null;                        // 异步接收消息
         private SocketAsyncEventArgs m_SendEvent = null;                        // 异步发送消息
-        private ScorpioConnection m_Connection = null;                          // 链接
+        private ScorpioConnection m_Connection = null;                          // 连接
         public ScorpioSocket() {
             m_SendEvent = new SocketAsyncEventArgs();
             m_SendEvent.Completed += SendAsyncCompleted;
@@ -38,14 +36,14 @@ namespace Scorpio.Net {
             return m_Socket;
         }
         //发送协议
-        public void Send(byte type, byte[] data) {
-            size_t length = (size_t)data.Length;
-            int count = length + HEAD_LENGTH + 1;
+        public void Send(byte type, short msgId, byte[] data) {
+            int length = data.Length;
+            int count = length + 5;                                             //协议头长度5  数据长度short(2个字节) + 数据类型byte(1个字节) + 协议IDshort(2个字节)
             byte[] buffer = new byte[count];
-            byte[] head = BitConverter.GetBytes(count);
-            Array.Copy(head, buffer, HEAD_LENGTH);
-            buffer[HEAD_LENGTH] = type;
-            Array.Copy(data, 0, buffer, HEAD_LENGTH + 1, length);
+            Array.Copy(BitConverter.GetBytes((short)count), buffer, 2);         //写入数据长度
+            buffer[2] = type;                                                   //写入数据类型
+            Array.Copy(BitConverter.GetBytes((short)msgId), 0, buffer, 3, 2);   //写入数据ID
+            Array.Copy(data, 0, buffer, 5, length);                             //写入数据内容
             lock (m_SendQueue) { m_SendQueue.Enqueue(buffer); }
             BeginSend();
         }
@@ -111,15 +109,16 @@ namespace Scorpio.Net {
             }
         }
         void ParsePackage() {
-            for (;;) {
-                if (m_RecvTokenSize < HEAD_LENGTH) break;
-                size_t size = BitConverter.ToInt16(m_RecvTokenBuffer, 0);
+            for ( ; ; ) {
+                if (m_RecvTokenSize < 2) break;
+                short size = BitConverter.ToInt16(m_RecvTokenBuffer, 0);
                 if (m_RecvTokenSize < size) break;
-                byte type = m_RecvTokenBuffer[HEAD_LENGTH];
-                int length = size - HEAD_LENGTH - 1;
+                byte type = m_RecvTokenBuffer[2];
+                short msgId = BitConverter.ToInt16(m_RecvTokenBuffer, 3);
+                int length = size - 5;
                 byte[] buffer = new byte[length];
-                Array.Copy(m_RecvTokenBuffer, HEAD_LENGTH + 1, buffer, 0, length);
-                OnRecv(type, length, buffer);
+                Array.Copy(m_RecvTokenBuffer, 5, buffer, 0, length);
+                OnRecv(type, msgId, length, buffer);
                 m_RecvTokenSize -= size;
                 if (m_RecvTokenSize > 0) Array.Copy(m_RecvTokenBuffer, size, m_RecvTokenBuffer, 0, m_RecvTokenSize);
             }
@@ -129,8 +128,8 @@ namespace Scorpio.Net {
         }
         void OnSend() {
         }
-        void OnRecv(byte type, int length, byte[] data) {
-            m_Connection.OnRecv(type, length, data);
+        void OnRecv(byte type, short msgId, int length, byte[] data) {
+            m_Connection.OnRecv(type, msgId, length, data);
         }
         void LogError(string error) {
             logger.error(error);
