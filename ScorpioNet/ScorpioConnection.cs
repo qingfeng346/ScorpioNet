@@ -8,7 +8,7 @@ namespace Scorpio.Net {
         protected ScorpioSocket m_Socket;
         internal void SetSocket(ScorpioSocket socket) { m_Socket = socket; }
         public void Send(byte type, short msgId, byte[] data) { m_Socket.Send(type, msgId, data); }
-        public void Disconnect(SocketError error) {
+        public void Disconnect() {
             if (m_Closed) { return; }
             m_Closed = true;
             try {

@@ -123,7 +123,7 @@ namespace Scorpio.Net {
             }
         }
         void Disconnect(SocketError error) {
-            m_Connection.Disconnect(error);
+            m_Connection.Disconnect();
         }
         void OnRecv(byte type, short msgId, int length, byte[] data) {
             m_Connection.OnRecv(type, msgId, length, data);
