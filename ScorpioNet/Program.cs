@@ -19,9 +19,6 @@ namespace ScorpioNet {
             Console.WriteLine("服务器收到消息 类型 " + type + "  msgId " + msgId + "  数据 : " + Encoding.UTF8.GetString(data));
             m_Socket.Send(type, msgId, data);
         }
-        public override void Disconnect(SocketError error) {
-
-        }
     }
     public class ClientFactory : ScorpioConnectionFactory {
         public ScorpioConnection create() {
@@ -40,9 +37,6 @@ namespace ScorpioNet {
         }
         public override void OnRecv(byte type, short msgId, int length, byte[] data) {
             Console.WriteLine("客户端收到消息 类型 " + type + "  msgId " + msgId + "  数据 : " + Encoding.UTF8.GetString(data));
-        }
-        public override void Disconnect(SocketError error) {
-
         }
     }
     class Program {

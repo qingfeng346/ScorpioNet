@@ -83,7 +83,6 @@ namespace Scorpio.Net {
                 SendInternal(null, e.Offset + e.BytesTransferred, e.Count - e.BytesTransferred - e.Offset);
             } else {
                 m_Sending = false;
-                OnSend();
                 BeginSend();
             }
         }
@@ -125,8 +124,6 @@ namespace Scorpio.Net {
         }
         void Disconnect(SocketError error) {
             m_Connection.Disconnect(error);
-        }
-        void OnSend() {
         }
         void OnRecv(byte type, short msgId, int length, byte[] data) {
             m_Connection.OnRecv(type, msgId, length, data);
