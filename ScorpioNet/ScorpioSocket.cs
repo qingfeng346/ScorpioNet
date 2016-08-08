@@ -37,7 +37,7 @@ namespace Scorpio.Net {
             return m_Socket;
         }
         public void Send(byte type, short msgId, byte[] data) {
-            Send(type, msgId, data, 0, data.Length);
+            Send(type, msgId, data, 0, data != null ? data.Length : 0);
         }
         //发送协议
         public void Send(byte type, short msgId, byte[] data, int offset, int length) {
@@ -46,7 +46,7 @@ namespace Scorpio.Net {
             Array.Copy(BitConverter.GetBytes((short)count), buffer, 2);         //写入数据长度
             buffer[2] = type;                                                   //写入数据类型
             Array.Copy(BitConverter.GetBytes((short)msgId), 0, buffer, 3, 2);   //写入数据ID
-            Array.Copy(data, offset, buffer, 5, length);                        //写入数据内容
+            if (data != null) Array.Copy(data, offset, buffer, 5, length);      //写入数据内容
             lock (m_SendQueue) { m_SendQueue.Enqueue(buffer); }
             ScorpioThreadPool.CreateThread(() => { BeginSend(); });
         }
