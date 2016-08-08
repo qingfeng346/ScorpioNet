@@ -49,6 +49,7 @@
     <Compile Include="ScorpioConnection.cs" />
     <Compile Include="ScorpioLogger.cs" />
     <Compile Include="ScorpioSocket.cs" />
+    <Compile Include="ScorpioThreadPool.cs" />
     <Compile Include="ServerSocket.cs" />
   </ItemGroup>
   <ItemGroup>

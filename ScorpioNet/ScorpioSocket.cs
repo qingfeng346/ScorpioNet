@@ -9,6 +9,7 @@ namespace Scorpio.Net {
         private bool m_Sending;                                                 // 是否正在发送消息
         private Socket m_Socket = null;                                         // Socket句柄
         private Queue<byte[]> m_SendQueue = new Queue<byte[]>();                // 发送消息队列
+        private object m_SendSync = new object();                               // 发送消息线程锁
         private SocketAsyncEventArgs m_RecvEvent = null;                        // 异步接收消息
         private SocketAsyncEventArgs m_SendEvent = null;                        // 异步发送消息
         private ScorpioConnection m_Connection = null;                          // 连接
@@ -35,42 +36,44 @@ namespace Scorpio.Net {
         public Socket GetSocket() {
             return m_Socket;
         }
-        //发送协议
         public void Send(byte type, short msgId, byte[] data) {
-            int length = data.Length;
+            Send(type, msgId, data, 0, data.Length);
+        }
+        //发送协议
+        public void Send(byte type, short msgId, byte[] data, int offset, int length) {
             int count = length + 5;                                             //协议头长度5  数据长度short(2个字节) + 数据类型byte(1个字节) + 协议IDshort(2个字节)
             byte[] buffer = new byte[count];
             Array.Copy(BitConverter.GetBytes((short)count), buffer, 2);         //写入数据长度
             buffer[2] = type;                                                   //写入数据类型
             Array.Copy(BitConverter.GetBytes((short)msgId), 0, buffer, 3, 2);   //写入数据ID
-            Array.Copy(data, 0, buffer, 5, length);                             //写入数据内容
+            Array.Copy(data, offset, buffer, 5, length);                        //写入数据内容
             lock (m_SendQueue) { m_SendQueue.Enqueue(buffer); }
-            BeginSend();
+            ScorpioThreadPool.CreateThread(() => { BeginSend(); });
         }
         void BeginSend() {
-            if (m_Sending || m_SendQueue.Count <= 0) return;
-            m_Sending = true;
-            byte[] data = null;
-            lock (m_SendQueue) { data = m_SendQueue.Dequeue(); }
-            SendInternal(data, 0, data.Length);
+            lock (m_SendSync) {
+                if (m_Sending || m_SendQueue.Count <= 0) return;
+                m_Sending = true;
+                byte[] data = null;
+                lock (m_SendQueue) { data = m_SendQueue.Dequeue(); }
+                SendInternal(data, 0, data.Length);
+            }
         }
         void SendInternal(byte[] data, int offset, int length) {
-            lock (m_SendEvent) {
-                var completedAsync = false;
-                try {
-                    if (data == null)
-                        m_SendEvent.SetBuffer(offset, length);
-                    else
-                        m_SendEvent.SetBuffer(data, offset, length);
-                    completedAsync = m_Socket.SendAsync(m_SendEvent);
-                } catch (System.Exception ex) {
-                    LogError("发送数据出错 : " + ex.ToString());
-                    Disconnect(SocketError.SocketError);
-                }
-                if (!completedAsync) {
-                    m_SendEvent.SocketError = SocketError.Fault;
-                    SendAsyncCompleted(this, m_SendEvent);
-                }
+            var completedAsync = false;
+            try {
+                if (data == null)
+                    m_SendEvent.SetBuffer(offset, length);
+                else
+                    m_SendEvent.SetBuffer(data, offset, length);
+                completedAsync = m_Socket.SendAsync(m_SendEvent);
+            } catch (System.Exception ex) {
+                LogError("发送数据出错 : " + ex.ToString());
+                Disconnect(SocketError.SocketError);
+            }
+            if (!completedAsync) {
+                m_SendEvent.SocketError = SocketError.Fault;
+                SendAsyncCompleted(this, m_SendEvent);
             }
         }
         void SendAsyncCompleted(object sender, SocketAsyncEventArgs e) {
@@ -79,16 +82,18 @@ namespace Scorpio.Net {
                 Disconnect(e.SocketError);
                 return;
             }
-            if (e.Offset + e.BytesTransferred < e.Count) {
-                SendInternal(null, e.Offset + e.BytesTransferred, e.Count - e.BytesTransferred - e.Offset);
-            } else {
-                m_Sending = false;
-                BeginSend();
+            lock (m_SendSync) {
+                if (e.Offset + e.BytesTransferred < e.Count) {
+                    SendInternal(null, e.Offset + e.BytesTransferred, e.Count - e.BytesTransferred - e.Offset);
+                } else {
+                    m_Sending = false;
+                    BeginSend();
+                }
             }
         }
         //开始接收消息
         void BeginReceive() {
-            m_Socket.ReceiveAsync(m_RecvEvent);
+            if (m_Socket.Connected) m_Socket.ReceiveAsync(m_RecvEvent);
         }
         void RecvAsyncCompleted(object sender, SocketAsyncEventArgs e) {
             if (e.SocketError != SocketError.Success) {
