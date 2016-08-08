@@ -28,12 +28,36 @@ namespace ScorpioNet {
         }
     }
     public class ServerConnection : ScorpioConnection {
+        private Dictionary<short, string> m_Files = new Dictionary<short, string>();
+        private object m_Sync = new object();
         public override void OnInitialize() {
             Console.WriteLine("有新连接进入 " + m_Socket.GetSocket().RemoteEndPoint.ToString());
         }
         public override void OnRecv(byte type, short msgId, int length, byte[] data) {
-            Console.WriteLine("服务器收到消息 类型 " + type + "  msgId " + msgId + "  数据 : " + Encoding.UTF8.GetString(data));
-            m_Socket.Send(type, msgId, data);
+            lock (m_Sync) {
+                if (type == 0) {
+                    string name = Path.Combine(Environment.CurrentDirectory, Encoding.UTF8.GetString(data));
+                    if (File.Exists(name)) File.Delete(name);
+                    m_Files[msgId] = name;
+                    Console.WriteLine("开始收取 [" + name + "] 文件");
+                } else if (type == 1) {
+                    if (m_Files.ContainsKey(msgId)) {
+                        string name = m_Files[msgId];
+                        using (FileStream stream = new FileStream(name, FileMode.Append)) {
+                            stream.Write(data, 0, data.Length);
+                        }
+                    }
+                } else if (type == 2) {
+                    if (m_Files.ContainsKey(msgId)) {
+                        string name = m_Files[msgId];
+                        m_Files.Remove(msgId);
+                        Console.WriteLine("收取文件 [" + name + "] 完成");
+                    }
+                } else {
+                    Console.WriteLine("服务器收到消息 类型 " + type + "  msgId " + msgId + "  数据 : " + Encoding.UTF8.GetString(data));
+                    m_Socket.Send(type, msgId, data);
+                }
+            }
         }
     }
     public class ClientFactory : ScorpioConnectionFactory {
@@ -48,23 +72,24 @@ namespace ScorpioNet {
                 instance = new ClientConnection();
             return instance;
         }
+        private short FILE_ID = 0;
         public override void OnInitialize() {
             Console.WriteLine("连接成功");
-            using (FileStream stream = File.OpenRead(@"E:\sgspad_1202.apk")) {
-                using (BinaryReader reader = new BinaryReader(stream)) {
-                    long length = stream.Length;
-                    long cur = 0;
-                    Send(0, 0, Encoding.UTF8.GetBytes(string.Format("{{name:\"{0}\", length : {1}}}", Path.GetFileName(stream.Name), length)));
-                    byte[] data = new byte[8192];
-                    int count = 0;
-                    while ((count = stream.Read(data, 0, 8192)) > 0) {
-                        cur += count;
-                        System.GC.Collect();
-                        Send(1, 0, data, 0, count);
-                        //Console.WriteLine("已发送 " + cur + " / " + length);
-                    }
-                    Send(2, 0, new byte[0]);
+        }
+        public void SendFile(string file) {
+            if (!File.Exists(file)) {
+                Console.WriteLine("文件 [" + file + "] 不存在");
+                return;
+            }
+            short fileID = FILE_ID++;
+            using (FileStream stream = File.OpenRead(file)) {
+                Send(0, fileID, Encoding.UTF8.GetBytes(Path.GetFileName(stream.Name)));
+                byte[] data = new byte[8192];
+                int count = 0;
+                while ((count = stream.Read(data, 0, 8192)) > 0) {
+                    Send(1, fileID, data, 0, count);
                 }
+                Send(2, fileID, null);
             }
         }
         public override void OnRecv(byte type, short msgId, int length, byte[] data) {
@@ -80,12 +105,16 @@ namespace ScorpioNet {
             ServerSocket server = new ServerSocket(new ServerFactory());
             server.Listen(9999);
             ClientSocket client = new ClientSocket(new ClientFactory());
-            client.Connect("localhost", 28123);
-            //FileStream stream = File.OpenRead("E:/迅雷下载/007：幽灵党.BD1280高清中英双字.mp4");
-            while (true) {
-                string str = Console.ReadLine();
-                ClientConnection.GetInstance().Send(100, 9999, Encoding.UTF8.GetBytes(str));
-            }
+            client.Connect("localhost", 9999);
+            Console.ReadKey();
+            //while (true) {
+            //    string str = Console.ReadLine();
+            //    if (str.StartsWith("file ")) {
+            //        ClientConnection.GetInstance().SendFile(str.Replace("file ", ""));
+            //    } else {
+            //        ClientConnection.GetInstance().Send(100, 9999, Encoding.UTF8.GetBytes(str));
+            //    }
+            //}
         }
     }
 }
