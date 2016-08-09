@@ -53,6 +53,9 @@ namespace ScorpioNet {
                         m_Files.Remove(msgId);
                         Console.WriteLine("收取文件 [" + name + "] 完成");
                     }
+                } else if (type == 3) {
+                    string str = Encoding.UTF8.GetString(data);
+                    Console.WriteLine("服务器执行命令 " + str);
                 } else {
                     Console.WriteLine("服务器收到消息 类型 " + type + "  msgId " + msgId + "  数据 : " + Encoding.UTF8.GetString(data));
                     m_Socket.Send(type, msgId, data);
@@ -106,15 +109,16 @@ namespace ScorpioNet {
             server.Listen(9999);
             ClientSocket client = new ClientSocket(new ClientFactory());
             client.Connect("localhost", 9999);
-            Console.ReadKey();
-            //while (true) {
-            //    string str = Console.ReadLine();
-            //    if (str.StartsWith("file ")) {
-            //        ClientConnection.GetInstance().SendFile(str.Replace("file ", ""));
-            //    } else {
-            //        ClientConnection.GetInstance().Send(100, 9999, Encoding.UTF8.GetBytes(str));
-            //    }
-            //}
+            while (true) {
+                string str = Console.ReadLine();
+                if (str.StartsWith("file ")) {
+                    ClientConnection.GetInstance().SendFile(str.Replace("file ", ""));
+                } else if (str.StartsWith("cmd ")) {
+                    ClientConnection.GetInstance().Send(3, 0, Encoding.UTF8.GetBytes(str.Replace("cmd ", "")));
+                } else {
+                    ClientConnection.GetInstance().Send(100, 9999, Encoding.UTF8.GetBytes(str));
+                }
+            }
         }
     }
 }

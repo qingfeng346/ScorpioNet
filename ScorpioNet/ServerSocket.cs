@@ -38,7 +38,7 @@ namespace Scorpio.Net {
             } catch (System.Exception ex) {
                 logger.error("Accept出现错误 : " + ex.ToString());
             }
-            if (!completed) BeginAccept();
+            if (!completed) ScorpioThreadPool.CreateThread(() => { BeginAccept(); });
         }
         void AcceptAsyncCompleted(object sender, SocketAsyncEventArgs e) {
             if (e.SocketError != SocketError.Success) {
@@ -47,6 +47,7 @@ namespace Scorpio.Net {
             }
             var socket = new ScorpioSocket();
             socket.SetSocket(m_AcceptEvent.AcceptSocket, m_Factory.create());
+            m_AcceptEvent.AcceptSocket = null;
             BeginAccept();
         }
     }
