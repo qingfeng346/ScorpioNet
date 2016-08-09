@@ -27,7 +27,7 @@ namespace Scorpio.Net {
                     socket.Close();
                 }
             } finally {
-                m_Host.OnDisconnect(this);
+                if (m_Host != null) m_Host.OnDisconnect(this);
                 OnDisconnect();
             }
         }
