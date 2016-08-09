@@ -97,7 +97,7 @@ namespace Scorpio.Net {
                     LogError("接收数据失败");
                     Disconnect(SocketError.SocketError);
                 }
-            } catch (Exception e) {
+            } catch (System.Exception e) {
                 LogError("接收数据出错 : " + e.ToString());
                 Disconnect(SocketError.SocketError);
             }
