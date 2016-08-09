@@ -62,6 +62,9 @@ namespace ScorpioNet {
                 }
             }
         }
+        public override void OnDisconnect() {
+            Console.WriteLine("有新连接断开连接" + m_Socket.GetSocket().RemoteEndPoint.ToString());
+        }
     }
     public class ClientFactory : ScorpioConnectionFactory {
         public ScorpioConnection create() {
@@ -115,10 +118,13 @@ namespace ScorpioNet {
                     ClientConnection.GetInstance().SendFile(str.Replace("file ", ""));
                 } else if (str.StartsWith("cmd ")) {
                     ClientConnection.GetInstance().Send(3, 0, Encoding.UTF8.GetBytes(str.Replace("cmd ", "")));
+                } else if (str == "exit") {
+                    ClientConnection.GetInstance().Disconnect();
                 } else {
                     ClientConnection.GetInstance().Send(100, 9999, Encoding.UTF8.GetBytes(str));
                 }
             }
+            Console.ReadKey();
         }
     }
 }

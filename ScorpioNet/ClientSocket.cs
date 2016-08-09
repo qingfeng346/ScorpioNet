@@ -7,7 +7,7 @@ namespace Scorpio.Net {
         Connecting,     //正在连接
         Connected,      //已连接状态
     }
-    public class ClientSocket {
+    public class ClientSocket : ScorpioHostBase {
         private ScorpioConnectionFactory m_Factory;
         private ClientState m_State;                    //当前状态
         private ScorpioSocket m_Dispatcher;             //网络信息处理
@@ -16,7 +16,6 @@ namespace Scorpio.Net {
         public ClientSocket(ScorpioConnectionFactory factory) {
             m_Factory = factory;
             m_State = ClientState.None;
-            m_Dispatcher = new ScorpioSocket();
             m_ConnectEvent = new SocketAsyncEventArgs();
             m_ConnectEvent.Completed += ConnectionAsyncCompleted;
         }
@@ -53,8 +52,12 @@ namespace Scorpio.Net {
                 return;
             }
             m_State = ClientState.Connected;
+            m_Dispatcher = new ScorpioSocket(m_Socket);
             var con = m_Factory.create();
-            m_Dispatcher.SetSocket(m_Socket, con);
+            con.SetSocket(this, m_Dispatcher);
+        }
+        public void OnDisconnect(ScorpioConnection connection) {
+
         }
     }
 }

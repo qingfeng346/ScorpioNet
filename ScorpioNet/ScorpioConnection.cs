@@ -3,10 +3,19 @@ namespace Scorpio.Net {
     public interface ScorpioConnectionFactory {
         ScorpioConnection create();
     }
+    public interface ScorpioHostBase {
+        void OnDisconnect(ScorpioConnection connection);
+    }
     public abstract class ScorpioConnection {
         private bool m_Closed = false;
         protected ScorpioSocket m_Socket;
-        internal void SetSocket(ScorpioSocket socket) { m_Socket = socket; }
+        protected ScorpioHostBase m_Host;
+        internal void SetSocket(ScorpioHostBase host, ScorpioSocket socket) {
+            m_Host = host;
+            m_Socket = socket;
+            m_Socket.SetConnection(this);
+            OnInitialize();
+        }
         public void Send(byte type, short msgId, byte[] data) { m_Socket.Send(type, msgId, data); }
         public void Send(byte type, short msgId, byte[] data, int offset, int count) { m_Socket.Send(type, msgId, data, offset, count); }
         public void Disconnect() {
@@ -18,6 +27,7 @@ namespace Scorpio.Net {
                     socket.Close();
                 }
             } finally {
+                m_Host.OnDisconnect(this);
                 OnDisconnect();
             }
         }

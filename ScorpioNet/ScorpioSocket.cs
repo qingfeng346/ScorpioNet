@@ -13,7 +13,8 @@ namespace Scorpio.Net {
         private SocketAsyncEventArgs m_RecvEvent = null;                        // 异步接收消息
         private SocketAsyncEventArgs m_SendEvent = null;                        // 异步发送消息
         private ScorpioConnection m_Connection = null;                          // 连接
-        public ScorpioSocket() {
+        public ScorpioSocket(Socket socket) {
+            m_Socket = socket;
             m_SendEvent = new SocketAsyncEventArgs();
             m_SendEvent.Completed += SendAsyncCompleted;
             m_RecvEvent = new SocketAsyncEventArgs();
@@ -21,17 +22,14 @@ namespace Scorpio.Net {
             m_RecvEvent.Completed += RecvAsyncCompleted;
         }
         //设置socket句柄
-        public void SetSocket(Socket socket, ScorpioConnection connection) {
-            m_Socket = socket;
+        public void SetConnection(ScorpioConnection connection) {
             m_Connection = connection;
-            m_Connection.SetSocket(this);
             m_Sending = false;
             m_RecvTokenSize = 0;
             Array.Clear(m_RecvTokenBuffer, 0, m_RecvTokenBuffer.Length);
             Array.Clear(m_RecvEvent.Buffer, 0, m_RecvEvent.Buffer.Length);
             m_SendQueue.Clear();
             BeginReceive();
-            m_Connection.OnInitialize();
         }
         public Socket GetSocket() {
             return m_Socket;
@@ -41,6 +39,7 @@ namespace Scorpio.Net {
         }
         //发送协议
         public void Send(byte type, short msgId, byte[] data, int offset, int length) {
+            if (!m_Socket.Connected) { return; }
             int count = length + 5;                                             //协议头长度5  数据长度short(2个字节) + 数据类型byte(1个字节) + 协议IDshort(2个字节)
             byte[] buffer = new byte[count];
             Array.Copy(BitConverter.GetBytes((short)count), buffer, 2);         //写入数据长度
@@ -93,7 +92,15 @@ namespace Scorpio.Net {
         }
         //开始接收消息
         void BeginReceive() {
-            if (m_Socket.Connected) m_Socket.ReceiveAsync(m_RecvEvent);
+            try {
+                if (!m_Socket.ReceiveAsync(m_RecvEvent)) {
+                    LogError("接收数据失败");
+                    Disconnect(SocketError.SocketError);
+                }
+            } catch (Exception e) {
+                LogError("接收数据出错 : " + e.ToString());
+                Disconnect(SocketError.SocketError);
+            }
         }
         void RecvAsyncCompleted(object sender, SocketAsyncEventArgs e) {
             if (e.SocketError != SocketError.Success) {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 namespace Scorpio.Net {
@@ -6,10 +7,11 @@ namespace Scorpio.Net {
         None,           //无状态
         Listened,       //监听状态
     }
-    public class ServerSocket {
+    public class ServerSocket : ScorpioHostBase {
         private ScorpioConnectionFactory m_Factory;
         private ServerState m_State;
         private Socket m_Socket;
+        private List<ScorpioConnection> m_Connects = new List<ScorpioConnection>();
         private SocketAsyncEventArgs m_AcceptEvent = null;
         public ServerSocket(ScorpioConnectionFactory factory) {
             m_Factory = factory;
@@ -45,10 +47,14 @@ namespace Scorpio.Net {
                 m_Socket.AcceptAsync(m_AcceptEvent);
                 return;
             }
-            var socket = new ScorpioSocket();
-            socket.SetSocket(m_AcceptEvent.AcceptSocket, m_Factory.create());
+            var connection = m_Factory.create();
+            connection.SetSocket(this, new ScorpioSocket(m_AcceptEvent.AcceptSocket));
+            m_Connects.Add(connection);
             m_AcceptEvent.AcceptSocket = null;
             BeginAccept();
+        }
+        public void OnDisconnect(ScorpioConnection connection) {
+            m_Connects.Remove(connection);
         }
     }
 }
