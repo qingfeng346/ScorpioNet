@@ -7,13 +7,14 @@ namespace Scorpio.Net {
         void OnDisconnect(ScorpioConnection connection);
     }
     public abstract class ScorpioConnection {
-        private bool m_Closed = false;
+        private bool m_Closed = true;
         protected ScorpioSocket m_Socket;
         protected ScorpioHostBase m_Host;
         internal void SetSocket(ScorpioHostBase host, ScorpioSocket socket) {
             m_Host = host;
             m_Socket = socket;
             m_Socket.SetConnection(this);
+            m_Closed = false;
             OnInitialize();
         }
         public void Send(byte type, short msgId, byte[] data) { m_Socket.Send(type, msgId, data); }
@@ -32,6 +33,7 @@ namespace Scorpio.Net {
             }
         }
         public virtual void OnInitialize() { }
+        public virtual void OnConnectError(string error) { }
         public virtual void OnDisconnect() { }
         public abstract void OnRecv(byte type, short msgId, int length, byte[] data);
     }

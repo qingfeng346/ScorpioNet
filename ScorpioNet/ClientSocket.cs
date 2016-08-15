@@ -8,14 +8,14 @@ namespace Scorpio.Net {
         Connected,      //已连接状态
     }
     public class ClientSocket : ScorpioHostBase {
-        private ScorpioConnectionFactory m_Factory;
         private ClientState m_State;                    //当前状态
         private ScorpioSocket m_Dispatcher;             //网络信息处理
+        private ScorpioConnection m_Connection;         //网络对象
         private Socket m_Socket = null;                 //Socket句柄
         private SocketAsyncEventArgs m_ConnectEvent;    //异步连接消息
         public ClientSocket(ScorpioConnectionFactory factory) {
-            m_Factory = factory;
             m_State = ClientState.None;
+            m_Connection = factory.create();
             m_ConnectEvent = new SocketAsyncEventArgs();
             m_ConnectEvent.Completed += ConnectionAsyncCompleted;
         }
@@ -39,22 +39,26 @@ namespace Scorpio.Net {
                     m_ConnectEvent.RemoteEndPoint = new IPEndPoint(address, port);
                 }
 #endif
-                m_Socket.ConnectAsync(m_ConnectEvent);
+                if (!m_Socket.ConnectAsync(m_ConnectEvent)) {
+                    ConnectError("连接服务器出错 " + host + ":" + port);
+                }
             } catch (System.Exception ex) {
-                m_State = ClientState.None;
-                logger.error("连接服务器出错 " + host + ":" + port + " " + ex.ToString());
+                ConnectError("连接服务器出错 " + host + ":" + port + " " + ex.ToString());
             };
         }
         void ConnectionAsyncCompleted(object sender, SocketAsyncEventArgs e) {
             if (e.SocketError != SocketError.Success) {
-                m_State = ClientState.None;
-                logger.error("连接服务器出错 : " + e.SocketError);
+                ConnectError("连接服务器出错 SocketError : " + e.SocketError);
                 return;
             }
             m_State = ClientState.Connected;
             m_Dispatcher = new ScorpioSocket(m_Socket);
-            var con = m_Factory.create();
-            con.SetSocket(this, m_Dispatcher);
+            m_Connection.SetSocket(this, m_Dispatcher);
+        }
+        void ConnectError(string error) {
+            m_State = ClientState.None;
+            logger.error(error);
+            m_Connection.OnConnectError(error);
         }
         public void OnDisconnect(ScorpioConnection connection) {
 
