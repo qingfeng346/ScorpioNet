@@ -35,6 +35,6 @@ namespace Scorpio.Net {
         public virtual void OnInitialize() { }
         public virtual void OnConnectError(string error) { }
         public virtual void OnDisconnect() { }
-        public abstract void OnRecv(byte type, short msgId, int length, byte[] data);
+        public virtual void OnRecv(byte type, short msgId, int length, byte[] data) { }
     }
 }
