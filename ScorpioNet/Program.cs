@@ -120,6 +120,7 @@ namespace ScorpioNet {
                     ClientConnection.GetInstance().Send(3, 0, Encoding.UTF8.GetBytes(str.Replace("cmd ", "")));
                 } else if (str == "exit") {
                     ClientConnection.GetInstance().Disconnect();
+                    break;
                 } else {
                     ClientConnection.GetInstance().Send(100, 9999, Encoding.UTF8.GetBytes(str));
                 }
