@@ -32,7 +32,7 @@ namespace Scorpio.Net {
                 if (host == "localhost") {
                     m_ConnectEvent.RemoteEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), port);
                     address = IPAddress.Parse("127.0.0.1");
-                } else  if (IPAddress.TryParse(host, out address)) {
+                } else if (IPAddress.TryParse(host, out address)) {
                     m_ConnectEvent.RemoteEndPoint = new IPEndPoint(address, port);
                 } else {
                     address = Dns.GetHostEntry(host).AddressList[0];

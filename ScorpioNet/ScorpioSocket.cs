@@ -4,7 +4,7 @@ using System.Net.Sockets;
 namespace Scorpio.Net {
     public class ScorpioSocket {
         private const int MAX_BUFFER_LENGTH = 8192;                             // 缓冲区大小
-        private byte[] m_RecvTokenBuffer = new byte[MAX_BUFFER_LENGTH * 10];    // 已经接收的数据总缓冲
+        private byte[] m_RecvTokenBuffer = new byte[MAX_BUFFER_LENGTH];         // 已经接收的数据总缓冲
         private int m_RecvTokenSize = 0;                                        // 接收总数据的长度
         private bool m_Sending;                                                 // 是否正在发送消息
         private Socket m_Socket = null;                                         // Socket句柄
@@ -40,12 +40,12 @@ namespace Scorpio.Net {
         //发送协议
         public void Send(byte type, short msgId, byte[] data, int offset, int length) {
             if (!m_Socket.Connected) { return; }
-            int count = length + 5;                                             //协议头长度5  数据长度short(2个字节) + 数据类型byte(1个字节) + 协议IDshort(2个字节)
+            int count = length + 7;                                             //协议头长度5  数据长度int(4个字节) + 数据类型byte(1个字节) + 协议IDshort(2个字节)
             byte[] buffer = new byte[count];
-            Array.Copy(BitConverter.GetBytes((short)count), buffer, 2);         //写入数据长度
-            buffer[2] = type;                                                   //写入数据类型
-            Array.Copy(BitConverter.GetBytes((short)msgId), 0, buffer, 3, 2);   //写入数据ID
-            if (data != null) Array.Copy(data, offset, buffer, 5, length);      //写入数据内容
+            Array.Copy(BitConverter.GetBytes(count), buffer, 4);                //写入数据长度
+            buffer[4] = type;                                                   //写入数据类型
+            Array.Copy(BitConverter.GetBytes(msgId), 0, buffer, 5, 2);          //写入数据ID
+            if (data != null) Array.Copy(data, offset, buffer, 7, length);      //写入数据内容
             lock (m_SendQueue) { m_SendQueue.Enqueue(buffer); }
             ScorpioThreadPool.CreateThread(() => { BeginSend(); });
         }
@@ -107,6 +107,11 @@ namespace Scorpio.Net {
                 LogError("接收数据出错 : " + e.SocketError);
                 Disconnect(e.SocketError);
             } else {
+                while (m_RecvTokenSize + e.BytesTransferred >= m_RecvTokenBuffer.Length) {
+                    byte[] bytes = new byte[m_RecvTokenBuffer.Length * 2];
+                    Array.Copy(m_RecvTokenBuffer, 0, bytes, 0, m_RecvTokenSize);
+                    m_RecvTokenBuffer = bytes;
+                }
                 Array.Copy(e.Buffer, 0, m_RecvTokenBuffer, m_RecvTokenSize, e.BytesTransferred);
                 m_RecvTokenSize += e.BytesTransferred;
                 try {
@@ -121,14 +126,14 @@ namespace Scorpio.Net {
         }
         void ParsePackage() {
             for ( ; ; ) {
-                if (m_RecvTokenSize < 2) break;
-                short size = BitConverter.ToInt16(m_RecvTokenBuffer, 0);
+                if (m_RecvTokenSize < 4) break;
+                int size = BitConverter.ToInt32(m_RecvTokenBuffer, 0);
                 if (m_RecvTokenSize < size) break;
-                byte type = m_RecvTokenBuffer[2];
-                short msgId = BitConverter.ToInt16(m_RecvTokenBuffer, 3);
-                int length = size - 5;
+                byte type = m_RecvTokenBuffer[4];
+                short msgId = BitConverter.ToInt16(m_RecvTokenBuffer, 5);
+                int length = size - 7;
                 byte[] buffer = new byte[length];
-                Array.Copy(m_RecvTokenBuffer, 5, buffer, 0, length);
+                Array.Copy(m_RecvTokenBuffer, 7, buffer, 0, length);
                 OnRecv(type, msgId, length, buffer);
                 m_RecvTokenSize -= size;
                 if (m_RecvTokenSize > 0) Array.Copy(m_RecvTokenBuffer, size, m_RecvTokenBuffer, 0, m_RecvTokenSize);
