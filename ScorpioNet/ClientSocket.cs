@@ -48,7 +48,7 @@ namespace Scorpio.Net {
         }
         void ConnectionAsyncCompleted(object sender, SocketAsyncEventArgs e) {
             if (e.SocketError != SocketError.Success) {
-                ConnectError("连接服务器出错 SocketError : " + e.SocketError);
+                ConnectError("连接服务器出错 " + e.RemoteEndPoint.ToString() + " " + e.SocketError);
                 return;
             }
             m_State = ClientState.Connected;
