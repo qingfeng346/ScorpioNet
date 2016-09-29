@@ -13,8 +13,10 @@ namespace Scorpio.Net {
         private SocketAsyncEventArgs m_RecvEvent = null;                        // 异步接收消息
         private SocketAsyncEventArgs m_SendEvent = null;                        // 异步发送消息
         private ScorpioConnection m_Connection = null;                          // 连接
-        public ScorpioSocket(Socket socket) {
+        private bool m_LengthIncludesLengthFieldLength;                         // 数据总长度是否包含
+        public ScorpioSocket(Socket socket, bool lengthIncludesLengthFieldLength) {
             m_Socket = socket;
+            m_LengthIncludesLengthFieldLength = lengthIncludesLengthFieldLength;
             m_SendEvent = new SocketAsyncEventArgs();
             m_SendEvent.Completed += SendAsyncCompleted;
             m_RecvEvent = new SocketAsyncEventArgs();
@@ -42,7 +44,7 @@ namespace Scorpio.Net {
             if (!m_Socket.Connected) { return; }
             int count = length + 7;                                             //协议头长度  数据长度int(4个字节) + 数据类型byte(1个字节) + 协议IDshort(2个字节)
             byte[] buffer = new byte[count];
-            Array.Copy(BitConverter.GetBytes(count - 4), buffer, 4);            //写入数据长度
+            Array.Copy(BitConverter.GetBytes(m_LengthIncludesLengthFieldLength ? count : count - 4), buffer, 4);            //写入数据长度
             buffer[4] = type;                                                   //写入数据类型
             Array.Copy(BitConverter.GetBytes(msgId), 0, buffer, 5, 2);          //写入数据ID
             if (data != null) Array.Copy(data, offset, buffer, 7, length);      //写入数据内容
@@ -127,7 +129,7 @@ namespace Scorpio.Net {
         void ParsePackage() {
             for ( ; ; ) {
                 if (m_RecvTokenSize < 4) break;
-                int size = BitConverter.ToInt32(m_RecvTokenBuffer, 0) + 4;
+                int size = BitConverter.ToInt32(m_RecvTokenBuffer, 0) + (m_LengthIncludesLengthFieldLength ? 0 : 4);
                 if (m_RecvTokenSize < size) break;
                 byte type = m_RecvTokenBuffer[4];
                 short msgId = BitConverter.ToInt16(m_RecvTokenBuffer, 5);

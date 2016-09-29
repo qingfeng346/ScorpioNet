@@ -13,8 +13,11 @@ namespace Scorpio.Net {
         private Socket m_Socket;
         private List<ScorpioConnection> m_Connects = new List<ScorpioConnection>();
         private SocketAsyncEventArgs m_AcceptEvent = null;
-        public ServerSocket(ScorpioConnectionFactory factory) {
+        private bool m_LengthIncludesLengthFieldLength;     //数据总长度是否包含
+        public ServerSocket(ScorpioConnectionFactory factory) : this (factory, true) { }
+        public ServerSocket(ScorpioConnectionFactory factory, bool lengthIncludesLengthFieldLength) {
             m_Factory = factory;
+            m_LengthIncludesLengthFieldLength = lengthIncludesLengthFieldLength;
             m_State = ServerState.None;
             m_AcceptEvent = new SocketAsyncEventArgs();
             m_AcceptEvent.Completed += AcceptAsyncCompleted;
@@ -48,7 +51,7 @@ namespace Scorpio.Net {
                 return;
             }
             var connection = m_Factory.create();
-            connection.SetSocket(this, new ScorpioSocket(m_AcceptEvent.AcceptSocket));
+            connection.SetSocket(this, new ScorpioSocket(m_AcceptEvent.AcceptSocket, m_LengthIncludesLengthFieldLength));
             m_Connects.Add(connection);
             m_AcceptEvent.AcceptSocket = null;
             BeginAccept();

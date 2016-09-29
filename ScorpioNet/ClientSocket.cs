@@ -8,13 +8,16 @@ namespace Scorpio.Net {
         Connected,      //已连接状态
     }
     public class ClientSocket : ScorpioHostBase {
-        private ClientState m_State;                    //当前状态
-        private ScorpioSocket m_Dispatcher;             //网络信息处理
-        private ScorpioConnection m_Connection;         //网络对象
-        private Socket m_Socket = null;                 //Socket句柄
-        private SocketAsyncEventArgs m_ConnectEvent;    //异步连接消息
-        public ClientSocket(ScorpioConnectionFactory factory) {
+        private ClientState m_State;                        //当前状态
+        private ScorpioSocket m_Dispatcher;                 //网络信息处理
+        private ScorpioConnection m_Connection;             //网络对象
+        private Socket m_Socket = null;                     //Socket句柄
+        private SocketAsyncEventArgs m_ConnectEvent;        //异步连接消息
+        private bool m_LengthIncludesLengthFieldLength;     //数据总长度是否包含
+        public ClientSocket(ScorpioConnectionFactory factory) : this(factory, true) { }
+        public ClientSocket(ScorpioConnectionFactory factory, bool lengthIncludesLengthFieldLength) {
             m_State = ClientState.None;
+            m_LengthIncludesLengthFieldLength = lengthIncludesLengthFieldLength;
             m_Connection = factory.create();
             m_ConnectEvent = new SocketAsyncEventArgs();
             m_ConnectEvent.Completed += ConnectionAsyncCompleted;
@@ -52,7 +55,7 @@ namespace Scorpio.Net {
                 return;
             }
             m_State = ClientState.Connected;
-            m_Dispatcher = new ScorpioSocket(m_Socket);
+            m_Dispatcher = new ScorpioSocket(m_Socket, m_LengthIncludesLengthFieldLength);
             m_Connection.SetSocket(this, m_Dispatcher);
         }
         void ConnectError(string error) {
