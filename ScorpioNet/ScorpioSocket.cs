@@ -40,9 +40,9 @@ namespace Scorpio.Net {
         //发送协议
         public void Send(byte type, short msgId, byte[] data, int offset, int length) {
             if (!m_Socket.Connected) { return; }
-            int count = length + 7;                                             //协议头长度5  数据长度int(4个字节) + 数据类型byte(1个字节) + 协议IDshort(2个字节)
+            int count = length + 7;                                             //协议头长度  数据长度int(4个字节) + 数据类型byte(1个字节) + 协议IDshort(2个字节)
             byte[] buffer = new byte[count];
-            Array.Copy(BitConverter.GetBytes(count), buffer, 4);                //写入数据长度
+            Array.Copy(BitConverter.GetBytes(count - 4), buffer, 4);            //写入数据长度
             buffer[4] = type;                                                   //写入数据类型
             Array.Copy(BitConverter.GetBytes(msgId), 0, buffer, 5, 2);          //写入数据ID
             if (data != null) Array.Copy(data, offset, buffer, 7, length);      //写入数据内容
@@ -127,7 +127,7 @@ namespace Scorpio.Net {
         void ParsePackage() {
             for ( ; ; ) {
                 if (m_RecvTokenSize < 4) break;
-                int size = BitConverter.ToInt32(m_RecvTokenBuffer, 0);
+                int size = BitConverter.ToInt32(m_RecvTokenBuffer, 0) + 4;
                 if (m_RecvTokenSize < size) break;
                 byte type = m_RecvTokenBuffer[4];
                 short msgId = BitConverter.ToInt16(m_RecvTokenBuffer, 5);
