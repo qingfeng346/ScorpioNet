@@ -38,7 +38,12 @@ namespace Scorpio.Net {
                 } else if (IPAddress.TryParse(host, out address)) {
                     m_ConnectEvent.RemoteEndPoint = new IPEndPoint(address, port);
                 } else {
-                    address = Dns.GetHostEntry(host).AddressList[0];
+                    var addressList = Dns.GetHostEntry(host).AddressList;
+                    if (addressList.Length > 1) {
+                        address = addressList[1];
+                    } else {
+                        address = addressList[0];
+                    }
                     m_ConnectEvent.RemoteEndPoint = new IPEndPoint(address, port);
                 }
 #endif
