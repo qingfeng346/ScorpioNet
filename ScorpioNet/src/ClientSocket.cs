@@ -26,8 +26,6 @@ namespace Scorpio.Net {
             if (m_State != ClientState.None) return;
             m_State = ClientState.Connecting;
             try {
-                m_Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                m_Socket.NoDelay = false;
 #if SCORPIO_DNSENDPOINT
                 m_ConnectEvent.RemoteEndPoint = new DnsEndPoint(m_Host, m_Port);
 #else
@@ -39,14 +37,12 @@ namespace Scorpio.Net {
                     m_ConnectEvent.RemoteEndPoint = new IPEndPoint(address, port);
                 } else {
                     var addressList = Dns.GetHostEntry(host).AddressList;
-                    if (addressList.Length > 1) {
-                        address = addressList[1];
-                    } else {
-                        address = addressList[0];
-                    }
+                    address = addressList[0];
                     m_ConnectEvent.RemoteEndPoint = new IPEndPoint(address, port);
                 }
 #endif
+                m_Socket = new Socket(m_ConnectEvent.RemoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                m_Socket.NoDelay = false;
                 if (!m_Socket.ConnectAsync(m_ConnectEvent)) {
                     ConnectError("连接服务器出错 " + host + ":" + port);
                 }
