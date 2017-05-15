@@ -63,7 +63,7 @@ namespace ScorpioNet {
             }
         }
         public override void OnDisconnect() {
-            Console.WriteLine("有新连接断开连接" + m_Socket.GetSocket().RemoteEndPoint.ToString());
+            Console.WriteLine("有连接断开连接");
         }
     }
     public class ClientFactory : ScorpioConnectionFactory {
@@ -121,6 +121,8 @@ namespace ScorpioNet {
                 } else if (str == "exit") {
                     ClientConnection.GetInstance().Disconnect();
                     break;
+                } else if (str == "quit") {
+                    server.Shutdown();
                 } else {
                     ClientConnection.GetInstance().Send(100, 9999, Encoding.UTF8.GetBytes(str));
                 }

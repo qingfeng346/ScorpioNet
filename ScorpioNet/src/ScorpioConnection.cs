@@ -1,4 +1,5 @@
-﻿using System.Net.Sockets;
+﻿using System;
+using System.Net.Sockets;
 namespace Scorpio.Net {
     public interface ScorpioConnectionFactory {
         ScorpioConnection create();
@@ -28,8 +29,12 @@ namespace Scorpio.Net {
                     socket.Close();
                 }
             } finally {
-                if (m_Host != null) m_Host.OnDisconnect(this);
-                OnDisconnect();
+                try {
+                    if (m_Host != null) m_Host.OnDisconnect(this);
+                    OnDisconnect();
+                } catch (Exception e) {
+                    logger.error("Connection Disconnect is error : " + e.ToString());
+                }
             }
         }
         public virtual void OnInitialize() { }

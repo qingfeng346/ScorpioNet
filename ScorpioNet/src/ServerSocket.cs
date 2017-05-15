@@ -19,16 +19,16 @@ namespace Scorpio.Net {
             m_Factory = factory;
             m_LengthIncludesLengthFieldLength = lengthIncludesLengthFieldLength;
             m_State = ServerState.None;
-            m_AcceptEvent = new SocketAsyncEventArgs();
-            m_AcceptEvent.Completed += AcceptAsyncCompleted;
         }
         public void Listen(int port) {
             if (m_State != ServerState.None) return;
             try {
+                m_AcceptEvent = new SocketAsyncEventArgs();
+                m_AcceptEvent.Completed += AcceptAsyncCompleted;
                 m_Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 m_Socket.NoDelay = false;
                 m_Socket.Bind(new IPEndPoint(IPAddress.Any, port));
-                m_Socket.Listen(100);
+                m_Socket.Listen(10);
                 m_State = ServerState.Listened;
                 BeginAccept();
             } catch (System.Exception ex) {
@@ -46,7 +46,10 @@ namespace Scorpio.Net {
             if (!completed) ScorpioThreadPool.CreateThread(() => { BeginAccept(); });
         }
         void AcceptAsyncCompleted(object sender, SocketAsyncEventArgs e) {
-            if (e.SocketError != SocketError.Success) {
+            var error = e.SocketError;
+            if (error != SocketError.Success) {
+                if (error == SocketError.OperationAborted || error == SocketError.Interrupted || error == SocketError.NotSocket)
+                    return;
                 m_Socket.AcceptAsync(m_AcceptEvent);
                 return;
             }
@@ -58,6 +61,21 @@ namespace Scorpio.Net {
         }
         public void OnDisconnect(ScorpioConnection connection) {
             m_Connects.Remove(connection);
+        }
+        public void Shutdown() {
+            if (m_State == ServerState.None) { return; }
+            m_State = ServerState.None;
+            try {
+                m_AcceptEvent.Completed -= AcceptAsyncCompleted;
+                m_AcceptEvent.Dispose();
+                m_AcceptEvent = null;
+                m_Socket.Close();
+                while (m_Connects.Count > 0) {
+                    m_Connects[0].Disconnect();
+                }
+            } finally {
+                m_Socket = null;
+            }
         }
     }
 }
