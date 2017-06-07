@@ -28,12 +28,14 @@ namespace Scorpio.Net {
                     socket.Shutdown(SocketShutdown.Both);
                     socket.Close();
                 }
+            } catch (Exception e) {
+                logger.error("Connection Disconnect is error : " + e.ToString());
             } finally {
                 try {
                     if (m_Host != null) m_Host.OnDisconnect(this);
                     OnDisconnect();
                 } catch (Exception e) {
-                    logger.error("Connection Disconnect is error : " + e.ToString());
+                    logger.error("Connection OnDisconnect is error : " + e.ToString());
                 }
             }
         }
