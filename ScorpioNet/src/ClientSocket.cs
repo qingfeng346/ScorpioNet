@@ -22,6 +22,9 @@ namespace Scorpio.Net {
             m_ConnectEvent = new SocketAsyncEventArgs();
             m_ConnectEvent.Completed += ConnectionAsyncCompleted;
         }
+        public ScorpioConnection GetConnection() {
+            return m_Connection;
+        }
         public void Connect(string host, int port) {
             if (m_State != ClientState.None) return;
             m_State = ClientState.Connecting;
